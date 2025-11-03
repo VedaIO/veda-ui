@@ -1,4 +1,7 @@
-{{define "welcome/welcome.html"}}
+<script lang="ts">
+  import { navigate } from './router';
+</script>
+
 <div id="welcome-view">
   <div class="p-5 mb-4 bg-body-tertiary rounded-3">
     <div class="container-fluid py-5">
@@ -20,7 +23,7 @@
         <button
           class="btn btn-outline-light"
           type="button"
-          onclick="showTopLevelView('app-management-view')"
+          on:click={() => navigate('/apps')}
         >
           Đi tới Quản lý Ứng dụng
         </button>
@@ -36,7 +39,7 @@
         <button
           class="btn btn-outline-light"
           type="button"
-          onclick="showTopLevelView('web-management-view')"
+          on:click={() => navigate('/web')}
         >
           Đi tới Quản lý Web
         </button>
@@ -44,4 +47,3 @@
     </div>
   </div>
 </div>
-{{end}}

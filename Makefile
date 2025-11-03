@@ -44,6 +44,7 @@ fmt:
 
 lint:
 	GOOS=windows golangci-lint run
+	cd gui && npm run lint
 
 clean:
 	@echo "Cleaning..."

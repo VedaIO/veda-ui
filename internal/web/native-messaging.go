@@ -15,7 +15,7 @@ import (
 
 const (
 	// pollInterval is the interval at which the web blocklist is polled for changes.
-	pollInterval = 2 * time.Second
+	pollInterval = 500 * time.Millisecond
 	internalAPI  = "http://127.0.0.1:58142"
 )
 

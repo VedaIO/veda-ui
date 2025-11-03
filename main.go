@@ -76,25 +76,55 @@ func startInternalAPIServer(db *sql.DB) {
 
 // registerWebRoutes sets up the routes for the web server.
 func registerWebRoutes(srv *api.Server, r *http.ServeMux) {
-	// Create a sub-filesystem for the frontend assets.
-	subFS, err := fs.Sub(gui.FrontendFS, "frontend")
+	distFS, err := fs.Sub(gui.FrontendFS, "frontend/dist")
 	if err != nil {
 		log.Fatalf("Failed to create sub-filesystem for frontend: %v", err)
 	}
 
-	staticFS := http.FileServer(http.FS(subFS))
-
-	// Serve static assets.
-	r.Handle("/dist/", staticFS)
-	r.Handle("/src/", staticFS)
-
-	// Serve application pages.
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		gui.HandleIndex(srv, w, r)
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		filePath := strings.TrimPrefix(r.URL.Path, "/")
+		if filePath == "" {
+			filePath = "index.html"
+		}
+
+		content, err := fs.ReadFile(distFS, filePath)
+		if err != nil {
+			// If the file is not found, serve index.html as a fallback for SPA routing.
+			log.Printf("File not found: %s, serving index.html", filePath)
+			content, err = fs.ReadFile(distFS, "index.html")
+			if err != nil {
+				http.Error(w, "Internal Server Error: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			filePath = "index.html" // Set filePath to index.html for content type detection
+		}
+
+		contentType := "text/plain"
+		if strings.HasSuffix(filePath, ".html") {
+			contentType = "text/html; charset=utf-8"
+		} else if strings.HasSuffix(filePath, ".css") {
+			contentType = "text/css; charset=utf-8"
+		} else if strings.HasSuffix(filePath, ".js") {
+			contentType = "application/javascript; charset=utf-8"
+		} else if strings.HasSuffix(filePath, ".svg") {
+			contentType = "image/svg+xml"
+		}
+
+		log.Printf("Serving file: %s, content-type: %s", filePath, contentType)
+
+		w.Header().Set("Content-Type", contentType)
+		_, err = w.Write(content)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	})
-	r.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		gui.HandleLoginTemplate(srv.Logger, w, r)
-	})
+
 	r.HandleFunc("/ping", gui.HandlePing)
 }
 

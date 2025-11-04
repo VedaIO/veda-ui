@@ -15,7 +15,7 @@ import (
 
 const (
 	// pollInterval is the interval at which the web blocklist is polled for changes.
-	pollInterval = 2 * time.Second
+	pollInterval = 500 * time.Millisecond
 	internalAPI  = "http://127.0.0.1:58142"
 )
 
@@ -163,14 +163,17 @@ func pollWebBlocklist() {
 			log.Printf("Failed to get web blocklist from internal API: %v", err)
 			continue
 		}
-		if err := resp.Body.Close(); err != nil {
-			log.Printf("Failed to close response body: %v", err)
-		}
 
 		var list []string
 		if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
 			log.Printf("Failed to decode web blocklist from internal API: %v", err)
+			if err := resp.Body.Close(); err != nil {
+				log.Printf("Failed to close response body: %v", err)
+			}
 			continue
+		}
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Failed to close response body: %v", err)
 		}
 
 		// Only send an update if the blocklist has changed.

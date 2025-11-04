@@ -4,6 +4,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"io/fs"
 	"log"
 	"net/http"
@@ -29,22 +30,46 @@ const (
 	chromeExtensionID = "ilaocldmkhlifnikhinkmiepekpbefoh"
 )
 
-// main is the entry point of the application. It determines the execution mode based on command-line arguments.
+// main is the entry point of the application. It uses command-line flags and arguments to determine
+// which mode the application should run in. This allows the same executable to serve multiple purposes:
+// as a background service, a native messaging host, and an interactive GUI application.
 func main() {
+	// The --background flag is used by the autostart mechanism (e.g., Windows Registry) to launch the
+	// application in a non-interactive mode on system startup. This ensures that the core blocking
+	// services are running without requiring user interaction or launching a visible window.
+	background := flag.Bool("background", false, "Run the application in background (service) mode without a GUI.")
+	flag.Parse()
+
 	db, err := data.InitDB()
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	data.NewLogger(db)
 
-	// When the application is launched by Chrome as a native messaging host,
-	// the first argument is the origin of the extension.
-	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "chrome-extension://") {
+	// The application's execution mode is determined by the following priority:
+	// 1. Background Mode: Triggered by the --background flag for autostart.
+	if *background {
+		startBackgroundService(db)
+		// select {} blocks the main goroutine, keeping the background service alive indefinitely.
+		select {}
+	} else if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "chrome-extension://") {
+		// 2. Native Messaging Host Mode: Triggered by the browser when the extension needs to communicate
+		// with the backend. The browser launches the executable with the extension's origin as an argument.
 		runNativeMessagingHost(db)
 		return
+	} else {
+		// 3. GUI Application Mode: The default mode for interactive use. It launches the web-based GUI.
+		startGUIApplication(db)
 	}
+}
 
-	startGUIApplication(db)
+// startBackgroundService initializes and runs the core services required for background operation.
+// This includes the API server, internal IPC server, and the daemon, without launching a GUI.
+func startBackgroundService(db *sql.DB) {
+	data.GetLogger().Println("Starting ProcGuard in background service mode...")
+	startAPIServer(db)
+	startInternalAPIServer(db)
+	startDaemonService(db)
 }
 
 // runNativeMessagingHost starts the application in native messaging host mode,
@@ -76,25 +101,55 @@ func startInternalAPIServer(db *sql.DB) {
 
 // registerWebRoutes sets up the routes for the web server.
 func registerWebRoutes(srv *api.Server, r *http.ServeMux) {
-	// Create a sub-filesystem for the frontend assets.
-	subFS, err := fs.Sub(gui.FrontendFS, "frontend")
+	distFS, err := fs.Sub(gui.FrontendFS, "frontend/dist")
 	if err != nil {
 		log.Fatalf("Failed to create sub-filesystem for frontend: %v", err)
 	}
 
-	staticFS := http.FileServer(http.FS(subFS))
-
-	// Serve static assets.
-	r.Handle("/dist/", staticFS)
-	r.Handle("/src/", staticFS)
-
-	// Serve application pages.
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		gui.HandleIndex(srv, w, r)
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		filePath := strings.TrimPrefix(r.URL.Path, "/")
+		if filePath == "" {
+			filePath = "index.html"
+		}
+
+		content, err := fs.ReadFile(distFS, filePath)
+		if err != nil {
+			// If the file is not found, serve index.html as a fallback for SPA routing.
+			log.Printf("File not found: %s, serving index.html", filePath)
+			content, err = fs.ReadFile(distFS, "index.html")
+			if err != nil {
+				http.Error(w, "Internal Server Error: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			filePath = "index.html" // Set filePath to index.html for content type detection
+		}
+
+		contentType := "text/plain"
+		if strings.HasSuffix(filePath, ".html") {
+			contentType = "text/html; charset=utf-8"
+		} else if strings.HasSuffix(filePath, ".css") {
+			contentType = "text/css; charset=utf-8"
+		} else if strings.HasSuffix(filePath, ".js") {
+			contentType = "application/javascript; charset=utf-8"
+		} else if strings.HasSuffix(filePath, ".svg") {
+			contentType = "image/svg+xml"
+		}
+
+		log.Printf("Serving file: %s, content-type: %s", filePath, contentType)
+
+		w.Header().Set("Content-Type", contentType)
+		_, err = w.Write(content)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	})
-	r.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		gui.HandleLoginTemplate(srv.Logger, w, r)
-	})
+
 	r.HandleFunc("/ping", gui.HandlePing)
 }
 

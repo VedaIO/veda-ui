@@ -57,7 +57,7 @@ func (srv *Server) authMiddleware(next http.Handler) http.Handler {
 		localIsAuthenticated := srv.IsAuthenticated
 		srv.Mu.Unlock()
 
-		publicRoutes := []string{"/login", "/api/has-password", "/api/login", "/api/set-password", "/api/blocklist"}
+		publicRoutes := []string{"/login", "/api/has-password", "/api/login", "/api/set-password", "/api/blocklist", "/api/is-authenticated"}
 		isPublic := false
 		for _, route := range publicRoutes {
 			if r.URL.Path == route {
@@ -66,7 +66,7 @@ func (srv *Server) authMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
-		if !localIsAuthenticated && !isPublic && !strings.HasPrefix(r.URL.Path, "/src/") && !strings.HasPrefix(r.URL.Path, "/dist/") {
+		if !localIsAuthenticated && !isPublic && !strings.HasPrefix(r.URL.Path, "/src/") && !strings.HasPrefix(r.URL.Path, "/dist/") && !strings.HasPrefix(r.URL.Path, "/assets/") && r.URL.Path != "/vite.svg" {
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
@@ -188,6 +188,7 @@ func (srv *Server) registerRoutes(r *http.ServeMux) {
 	r.HandleFunc("/logout", srv.handleLogout)
 
 	// API routes
+	r.HandleFunc("/api/is-authenticated", srv.handleIsAuthenticated)
 	r.HandleFunc("/api/has-password", srv.handleHasPassword)
 	r.HandleFunc("/api/login", srv.handleLogin)
 	r.HandleFunc("/api/set-password", srv.handleSetPassword)
@@ -207,7 +208,7 @@ func (srv *Server) registerRoutes(r *http.ServeMux) {
 	// Web Blocklist API routes
 	r.HandleFunc("/api/web-blocklist", srv.handleGetWebBlocklist)
 	r.HandleFunc("/api/web-blocklist/add", srv.handleAddWebBlocklist)
-	r.HandleFunc("//api/web-blocklist/remove", srv.handleRemoveWebBlocklist)
+	r.HandleFunc("/api/web-blocklist/remove", srv.handleRemoveWebBlocklist)
 	r.HandleFunc("/api/web-blocklist/clear", srv.handleClearWebBlocklist)
 	r.HandleFunc("/api/web-blocklist/save", srv.handleSaveWebBlocklist)
 	r.HandleFunc("/api/web-blocklist/load", srv.handleLoadWebBlocklist)

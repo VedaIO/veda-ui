@@ -7,6 +7,15 @@ import (
 	"procguard/internal/data"
 )
 
+// handleIsAuthenticated checks if the user is authenticated.
+func (s *Server) handleIsAuthenticated(w http.ResponseWriter, r *http.Request) {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	if err := json.NewEncoder(w).Encode(map[string]bool{"authenticated": s.IsAuthenticated}); err != nil {
+		s.Logger.Printf("Error encoding response: %v", err)
+	}
+}
+
 // handleLogout handles the user logout.
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	s.Mu.Lock()

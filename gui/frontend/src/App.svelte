@@ -87,10 +87,8 @@
         </ul>
         <ul class="navbar-nav">
           <li class="nav-item">
-            <button
-              class="nav-link btn"
-              on:click={handleStop}
-              >Dừng</button
+            <button class="nav-link btn" on:click={handleStop}
+              >Dừng ProcGuard</button
             >
           </li>
           <li class="nav-item">

@@ -24,7 +24,7 @@ jobs:
         run: nix develop --command make build-frontend
 
       - name: Run golangci-lint
-        run: nix develop --command golangci-lint run ./...
+        run: nix develop --command bash -c 'GOOS=windows golangci-lint run ./...'
 
       - name: Build
         run: nix develop --command make build

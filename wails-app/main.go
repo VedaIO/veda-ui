@@ -6,7 +6,6 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 	"log"
 	"os"
 	"strings"
@@ -120,67 +119,7 @@ func main() {
 		// Combined with HideWindowOnClose=true, this would cause hidden processes to accumulate.
 		//
 		// With SingleInstanceLock, only one process can run at a time.
-		// Subsequent launches trigger the OnSecondInstanceLaunch callback instead.
-		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId: "com.procguard.wails-app",
-
-			// OnSecondInstanceLaunch: Callback when executable is run while already running
-			//
-			// Smart behavior: Distinguish between user launch vs background operation
-			//
-			// Problem to solve:
-			//   - Chrome extension reconnects via native messaging frequently (every 5s)
-			//   - This causes the executable to launch (native messaging host)
-			//   - But user also needs a way to reopen the hidden window by double-clicking
-			//
-			// Solution: Check working directory of the launch
-			//   - If launched from Chrome's directory → Native messaging, stay hidden
-			//   - Otherwise → User intentional launch, show window
-			//
-			// How to reopen: Just double-click the executable (normal user behavior)
-			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
-				// Check if launched by Chrome (Native Messaging)
-				// Chrome passes the extension origin as an argument: chrome-extension://<id>/
-				isNativeMessaging := false
-				
-				// Method 1: Check arguments
-				for _, arg := range data.Args {
-					if strings.HasPrefix(arg, "chrome-extension://") {
-						isNativeMessaging = true
-						break
-					}
-				}
-				
-				// Method 2: Fallback to Working Directory check (just in case)
-				if !isNativeMessaging {
-					wd := data.WorkingDirectory
-					if wd != "" {
-						wdLower := strings.ToLower(wd)
-						if strings.Contains(wdLower, "chrome") || strings.Contains(wdLower, "google") {
-							isNativeMessaging = true
-						}
-					}
-				}
-				
-				if isNativeMessaging {
-					log.Println("Second instance from native messaging - staying hidden")
-					
-					// Mark native messaging as active
-					app.IsNativeMessagingActive = true
-					
-					// Notify frontend that extension is connected
-					// This updates the UI immediately without needing a reload
-					if app.ctx != nil {
-						wailsruntime.EventsEmit(app.ctx, "extension_connected", true)
-					}
-				} else {
-					log.Println("Second instance from user - showing window")
-					// User double-clicked the exe - show the window
-					app.ShowWindow()
-				}
-			},
-		},
-
+		
 		// Bind the app struct to make its methods available to frontend JS
 		// Frontend can call these via window.go.main.App.MethodName()
 		Bind: []interface{}{

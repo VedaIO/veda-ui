@@ -168,6 +168,14 @@ func pollWebBlocklist() {
 	}
 }
 
+// Stop sends a stopping message to the extension to prevent it from reconnecting.
+func Stop() {
+	sendMessage(Response{
+		Type:    "stopping",
+		Payload: nil,
+	})
+}
+
 // sendMessage sends a message to the browser extension.
 func sendMessage(resp Response) {
 	log := data.GetLogger()

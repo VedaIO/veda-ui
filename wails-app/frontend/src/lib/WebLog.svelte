@@ -29,9 +29,9 @@
   ): Promise<void> {
     try {
       const data = await window.go.main.App.GetWebLogs(
+        query,
         sinceStr,
-        untilStr,
-        query
+        untilStr
       );
       if (data && data.length > 0) {
         const items: WebLogItem[] = await Promise.all(

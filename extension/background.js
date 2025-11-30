@@ -8,9 +8,14 @@ function connect() {
     port = chrome.runtime.connectNative(hostName);
     isPortConnected = true;
 
+    let isExpectedDisconnect = false;
+
     port.onMessage.addListener((msg) => {
       if (msg.type === 'web_blocklist') {
         webBlocklist = msg.payload || [];
+      } else if (msg.type === 'stopping') {
+        // App is stopping intentionally, don't reconnect
+        isExpectedDisconnect = true;
       }
     });
 
@@ -18,10 +23,14 @@ function connect() {
       isPortConnected = false;
       if (chrome.runtime.lastError) {
       }
-      // Retry native messaging connection after 5 seconds
-      // This reconnection interval allows the extension to resume functionality quickly
-      // if ProcGuard daemon restarts or connection is lost
-      setTimeout(connect, 5000);
+
+      // Only reconnect if it wasn't an expected disconnect
+      if (!isExpectedDisconnect) {
+        // Retry native messaging connection after 5 seconds
+        // This reconnection interval allows the extension to resume functionality quickly
+        // if ProcGuard daemon restarts or connection is lost
+        setTimeout(connect, 5000);
+      }
     });
 
     // Request the blocklist on connection.

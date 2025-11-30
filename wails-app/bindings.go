@@ -2,10 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"time"
+
 	"wails-app/api"
-	"wails-app/internal/web"
+
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -16,8 +21,7 @@ type App struct {
 	ctx context.Context
 	*api.Server
 	
-	// IsNativeMessagingActive indicates if the app was launched by Chrome native messaging
-	// This is used to detect if the extension is installed/active, even if unpacked (dev mode)
+	// Legacy field (not used anymore)
 	IsNativeMessagingActive bool
 }
 
@@ -27,23 +31,43 @@ func NewApp() *App {
 	return &App{}
 }
 
-// CheckChromeExtension checks if the ProcGuard Chrome extension is installed
-// by looking for it in Chrome's extensions directory on the filesystem
-// OR by checking if native messaging is active (which means extension launched us)
+// CheckChromeExtension checks if the Chrome extension is connected
+// using a file-based heartbeat approach (works across processes)
 //
-// Why this exists: In a Wails WebView, we can't use chrome.runtime APIs directly
-// Solution: Check if the extension directory exists on disk
+// How it works:
+//   - Native messaging instances (separate processes) update a timestamp file
+//   - GUI reads the file to check if extension pinged recently
+//   - If file updated within last 10 seconds = Connected
 //
-// Returns: true if extension directory found OR native messaging is active
+// Why file-based:
+//   - Native messaging instances are SEPARATE PROCESSES
+//   - Can't share memory with GUI process
+//   - File is the only way to communicate state
+//
+// Returns: true if extension pinged within last 10 seconds
 func (a *App) CheckChromeExtension() bool {
-	// If native messaging is active, the extension is definitely installed and working!
-	// This handles the "dev mode" / unpacked extension case where ID might match
-	// but path is different, or if we just want to be sure it's actually connected.
-	if a.IsNativeMessagingActive {
-		return true
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return false
 	}
-
-	return web.CheckChromeExtension()
+	
+	heartbeatPath := filepath.Join(cacheDir, "procguard", "extension_heartbeat")
+	
+	// Read timestamp from file
+	data, err := os.ReadFile(heartbeatPath)
+	if err != nil {
+		return false
+	}
+	
+	// Parse timestamp
+	var lastPing int64
+	if _, err := fmt.Sscanf(string(data), "%d", &lastPing); err != nil {
+		return false
+	}
+	
+	// Check if ping is recent (within last 10 seconds)
+	pingTime := time.Unix(lastPing, 0)
+	return time.Since(pingTime) < 10*time.Second
 }
 
 // OpenBrowser opens a URL in the user's default system browser

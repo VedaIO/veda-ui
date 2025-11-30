@@ -60,15 +60,25 @@ func (a *App) startup(ctx context.Context) {
 	if err := web.RegisterExtension("gpaafgcbiejjpfdgmjglehboafdicdjb"); err != nil {
 		log.Printf("Failed to register Dev extension: %v", err)
 	}
-
-	// Start the native messaging host
-	// This listens for messages from the Chrome extension via Stdin
-	// CRITICAL: This must run in a goroutine so it doesn't block startup
-	go web.Run()
 }
 
 func main() {
-	// Create an instance of the app structure
+	// CRITICAL: Detect if we're launched as a native messaging host
+	// Native messaging hosts have Stdin connected to a pipe (Chrome's stdout)
+	// GUI launches have Stdin as a terminal/invalid
+	stat, _ := os.Stdin.Stat()
+	isNativeMessagingMode := (stat.Mode() & os.ModeCharDevice) == 0
+	
+	if isNativeMessagingMode {
+		// We're a native messaging host - run messaging loop only, no GUI
+		log.Println("Starting in native messaging mode (no GUI)")
+		web.Run()
+		// When web.Run() exits (Chrome disconnects), this process terminates
+		return
+	}
+	
+	// Normal GUI mode - create app instance
+	log.Println("Starting in GUI mode")
 	app := NewApp()
 
 	// Check if this is a native messaging launch (first instance)
@@ -118,7 +128,16 @@ func main() {
 		// Without this, running the executable multiple times creates multiple processes.
 		// Combined with HideWindowOnClose=true, this would cause hidden processes to accumulate.
 		//
-		// With SingleInstanceLock, only one process can run at a time.
+		// With SingleInstanceLock, only one GUI process can run at a time.
+		// Native messaging instances bypass this entirely (they exit main() early).
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "com.procguard.wails-app",
+			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
+				// This only fires for GUI launches (native messaging instances already exited)
+				log.Println("Second GUI instance detected - showing existing window")
+				app.ShowWindow()
+			},
+		},
 		
 		// Bind the app struct to make its methods available to frontend JS
 		// Frontend can call these via window.go.main.App.MethodName()

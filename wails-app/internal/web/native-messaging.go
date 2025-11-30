@@ -3,8 +3,10 @@ package web
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -76,6 +78,18 @@ func Run() {
 			log.Printf("Error unmarshalling message: %v", err)
 			continue
 		}
+
+		// Update extension heartbeat (message received = extension is alive)
+		// Write current timestamp to file so GUI process can detect connection
+		go func() {
+			cacheDir, err := os.UserCacheDir()
+			if err != nil {
+				return
+			}
+			heartbeatPath := filepath.Join(cacheDir, "procguard", "extension_heartbeat")
+			timestamp := fmt.Sprintf("%d", time.Now().Unix())
+			os.WriteFile(heartbeatPath, []byte(timestamp), 0644)
+		}()
 
 		// Handle the message based on its type.
 		switch req.Type {

@@ -1,4 +1,4 @@
-const hostName = 'com.nixuris.procguard';
+const hostName = 'com.infraflakes.procguard';
 let port;
 let webBlocklist = [];
 let isPortConnected = false;
@@ -8,9 +8,14 @@ function connect() {
     port = chrome.runtime.connectNative(hostName);
     isPortConnected = true;
 
+    let isExpectedDisconnect = false;
+
     port.onMessage.addListener((msg) => {
       if (msg.type === 'web_blocklist') {
         webBlocklist = msg.payload || [];
+      } else if (msg.type === 'stopping') {
+        // App is stopping intentionally, don't reconnect
+        isExpectedDisconnect = true;
       }
     });
 
@@ -18,14 +23,21 @@ function connect() {
       isPortConnected = false;
       if (chrome.runtime.lastError) {
       }
-      setTimeout(connect, 5000);
+
+      // Only reconnect if it wasn't an expected disconnect
+      if (!isExpectedDisconnect) {
+        // Retry native messaging connection after 5 seconds
+        // This reconnection interval allows the extension to resume functionality quickly
+        // if ProcGuard daemon restarts or connection is lost
+        setTimeout(connect, 5000);
+      }
     });
 
     // Request the blocklist on connection.
     port.postMessage({ type: 'get_web_blocklist' });
   } catch (err) {
     isPortConnected = false;
-    // Still try to reconnect
+    // Retry connection if initial connect fails (e.g. daemon not running yet)
     setTimeout(connect, 5000);
   }
 }
@@ -112,7 +124,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // Only log when the tab is fully loaded and has a valid URL.
   if (changeInfo.status === 'complete' && tab.url && (tab.url.startsWith('http') || tab.url.startsWith('https'))) {
     if (port && isPortConnected) {
-      port.postMessage({ type: 'log_url', payload: tab.url });
+      port.postMessage({
+        type: 'log_url',
+        payload: {
+          url: tab.url,
+          title: tab.title,
+          visitTime: Math.floor(Date.now() / 1000)
+        }
+      });
 
       // Inject a script to get the title and favicon
       chrome.scripting.executeScript({

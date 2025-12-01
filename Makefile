@@ -11,7 +11,7 @@ all: build
 
 build:
 	@echo "Building ProcGuard for windows..."
-	cd wails-app && wails build -platform windows/amd64 -ldflags="-X main.version=$(VERSION)"
+	cd wails-app && wails build -platform windows/amd64 -ldflags="-w -X main.version=$(VERSION) -H windowsgui"
 
 build-debug:
 	@echo "Building ProcGuard for windows..."

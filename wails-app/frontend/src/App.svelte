@@ -176,7 +176,7 @@
   >
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header" style="color: black;">
           <h5 class="modal-title" id="uninstallModalLabel">
             Xác nhận gỡ cài đặt
           </h5>
@@ -187,7 +187,7 @@
             aria-label="Close"
           ></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="color: black;">
           <p>Vui lòng nhập mật khẩu của bạn để tiếp tục.</p>
           <form
             on:submit|preventDefault={() => {

@@ -9,7 +9,7 @@
   }
 
   function close() {
-    window.runtime.Quit();
+    window.runtime.WindowHide();
   }
 </script>
 

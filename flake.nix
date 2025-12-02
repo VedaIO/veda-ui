@@ -16,7 +16,6 @@
         wails
         gnumake
         nodejs_24
-        openssl
       ];
       shellHook = ''
         go env -w GOPATH=$HOME/.local/share/go

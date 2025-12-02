@@ -107,7 +107,7 @@ CGO + Zig Modules (New)
 ## Getting Started with CGO
 
 ### Prerequisites:
-1. Install Zig: `winget install -e --id zig.zig`
+1. Install Zig
 2. Install Windows SDK (for headers)
 3. Setup CGO environment: `set CGO_ENABLED=1`
 

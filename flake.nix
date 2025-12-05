@@ -20,8 +20,6 @@
       ];
       shellHook = ''
         go env -w GOPATH=$HOME/.local/share/go
-        export NPM_CONFIG_PREFIX="$HOME/.local"
-        export CGO_ENABLED=1
         export PATH="$HOME/.local/bin:$PATH"
         export PATH="$HOME/.local/share/go/bin:$PATH"
       '';

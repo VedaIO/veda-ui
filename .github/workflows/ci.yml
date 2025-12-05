@@ -1,7 +1,8 @@
-name: Go CI
+name: ProcGuard CI
 on:
   push:
   pull_request:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -9,25 +10,55 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Nix
-        uses: cachix/install-nix-action@v27
+      # Use Determinate Nix Installer (faster than normal Nix)
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/nix-installer-action@v15
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-            experimental-features = nix-command flakes
+          determinate: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Wails
-        run: nix develop --command go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      # Cache Nix store using Magic Nix Cache
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@v8
+        with:
+          use-flakehub: true
 
-      - name: Build
-        run: cd wails-app && nix develop --command make build
+      # Cache Go modules separately
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-      - name: Format Codebase
-        run: cd wails-app && nix develop --command make fmt
+      # Single efficient step
+      - name: Build, Format & Lint
+        run: |
+          # All commands run in the same Nix environment
+          cd wails-app
+          
+          # Install Wails (cached in go/bin)
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+          
+          # Run everything in parallel where possible
+          make build &
+          BUILD_PID=$!
+          
+          make fmt &
+          FMT_PID=$!
+          
+          wait $BUILD_PID
+          wait $FMT_PID
+          
+          make lint
+          
+          cd frontend && bun run format-check
 
-      - name: Format Check
-        run: cd wails-app && nix develop --command bash -c 'gofmt -l . && cd frontend && bun run format-check'
-
-      - name: Run Lint
-        run: cd && wails-app nix develop --command make lint
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProcGuard.exe
+          path: wails-app/build/bin/ProcGuard.exe

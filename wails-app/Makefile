@@ -8,11 +8,11 @@ VERSION ?= $(shell git describe --tags --always --dirty --first-parent 2>/dev/nu
 .PHONY: all build dev fmt clean
 
 all: build
-
+# DO NOT ADD -s FLAG OR ELSE ANTI VIRUS WILL TRIGGER
 build:
 	@echo "Building ProcGuard for windows..."
 	cd frontend && bun run build
-	CGO_ENABLED=1 CC="zig cc -target x86_64-windows-gnu" GOOS=windows GOARCH=amd64 go build -tags desktop,production -ldflags="-w -s -X main.version=$(VERSION) -H windowsgui" -o build/bin/ProcGuard.exe
+	CGO_ENABLED=1 CC="zig cc -target x86_64-windows-gnu" GOOS=windows GOARCH=amd64 go build -tags desktop,production -ldflags="-w -X main.version=$(VERSION) -H windowsgui" -o build/bin/ProcGuard.exe
 
 build-debug:
 	@echo "Building ProcGuard for windows (debug)..."

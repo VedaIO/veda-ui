@@ -7,7 +7,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
-	"wails-app/internal/native/selfprotect"
 	"log"
 	"os"
 	"path/filepath"
@@ -83,11 +82,6 @@ func main() {
 
 	log.Printf("=== PROCGUARD LAUNCHED === Args: %v", os.Args)
 	log.Printf("CWD: %v", func() string { wd, _ := os.Getwd(); return wd }())
-
-	// Protect process from unauthorized termination (Task Manager kill, etc.)
-	if err := selfprotect.ProtectProcess(); err != nil {
-		log.Printf("Warning: Could not protect process: %v", err)
-	}
 
 	// MODE 1: NATIVE MESSAGING HOST
 	// Chrome launches us with the extension ID as an argument: chrome-extension://...

@@ -101,13 +101,17 @@
         <h5 class="card-title mb-0">
           <i class="bi bi-clock-history me-2"></i>Thời gian sử dụng hôm nay
         </h5>
-        <span class="badge bg-primary fs-6">{formatDuration(totalScreenTime)}</span>
+        <span class="badge bg-primary fs-6"
+          >{formatDuration(totalScreenTime)}</span
+        >
       </div>
 
       {#if screenTimeData.length > 0}
         <div class="screen-time-list">
           {#each screenTimeData.slice(0, 5) as item (item.executablePath)}
-            <div class="screen-time-item d-flex align-items-center py-2 border-bottom">
+            <div
+              class="screen-time-item d-flex align-items-center py-2 border-bottom"
+            >
               {#if item.icon}
                 <img
                   src="data:image/png;base64,{item.icon}"

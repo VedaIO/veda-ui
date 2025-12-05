@@ -27,7 +27,7 @@ fmt:
 	cd frontend && bun run format
 
 lint:
-	GOOS=windows golangci-lint run
+	CGO_ENABLED=1 CC="zig cc -target x86_64-windows-gnu" GOOS=windows golangci-lint run
 	cd frontend && bun run lint
 
 clean:

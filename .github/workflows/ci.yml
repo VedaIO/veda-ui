@@ -18,13 +18,13 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: Build
-        run: nix develop --command make build
+        run: cd wails-app && nix develop --command make build
 
       - name: Format Codebase
-        run: nix develop --command make fmt
+        run: cd wails-app && nix develop --command make fmt
 
       - name: Format Check
-        run: nix develop --command bash -c 'cd wails-app && gofmt -l . && cd frontend && npm run format-check'
+        run: cd wails-app && nix develop --command bash -c 'gofmt -l . && cd frontend && bun run format-check'
 
       - name: Run Lint
-        run: nix develop --command make lint
+        run: cd && wails-app nix develop --command make lint

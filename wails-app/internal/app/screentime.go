@@ -4,7 +4,6 @@ package app
 
 import (
 	"database/sql"
-	"strings"
 	"time"
 	"wails-app/internal/data"
 	"wails-app/internal/native/screentime"
@@ -53,8 +52,8 @@ func trackForegroundWindow(appLogger data.Logger, state *ScreenTimeState) {
 		return
 	}
 
-	// Skip ProcGuard itself
-	if strings.Contains(strings.ToLower(exePath), "procguard.exe") {
+	// Use shared filter to skip system processes, Windows components, etc.
+	if !ShouldTrackApp(exePath, proc) {
 		return
 	}
 

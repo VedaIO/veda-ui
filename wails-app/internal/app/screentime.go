@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 	"wails-app/internal/data"
-	"wails-app/internal/platform"
+	"wails-app/internal/platform/screentime"
 
 	"github.com/shirou/gopsutil/v3/process"
 )
@@ -33,8 +33,8 @@ func StartScreenTimeMonitor(appLogger data.Logger, db *sql.DB) {
 
 // trackForegroundWindow checks the current foreground window and logs screen time
 func trackForegroundWindow(appLogger data.Logger, state *ScreenTimeState) {
-	// Get foreground window info from platform layer
-	info := platform.Current().GetForegroundWindow()
+	// Get foreground window info directly from platform/screentime
+	info := screentime.GetActiveWindowInfo()
 	if info == nil || info.PID == 0 {
 		return
 	}

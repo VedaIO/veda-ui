@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"sync"
 	"wails-app/internal/data"
+	"wails-app/internal/platform/executable"
+	"wails-app/internal/platform/icon"
 	"wails-app/internal/platform/nativehost"
 )
 
@@ -61,4 +63,35 @@ func (s *Server) GetWebDetails(domain string) (data.WebMetadata, error) {
 // RegisterExtension handles the registration of the browser extension.
 func (s *Server) RegisterExtension(id string) error {
 	return nativehost.RegisterExtension(id)
+}
+
+// getAppDetails retrieves details for a given application, such as its commercial name and icon.
+// It relies on platform-specific implementations in internal/platform.
+func (s *Server) getAppDetails(exePath string) (string, string) {
+	// Get the commercial name using platform-specific logic
+	commercialName, err := executable.GetCommercialName(exePath)
+	if err != nil {
+		s.Logger.Printf("Failed to get commercial name for %s: %v", exePath, err)
+		commercialName = "" // Fallback handled by UI or empty string
+	}
+
+	s.iconCacheMu.Lock()
+	iconBase64, ok := s.iconCache[exePath]
+	s.iconCacheMu.Unlock()
+	if ok {
+		return commercialName, iconBase64
+	}
+
+	// Get the application's icon as a base64-encoded string using platform-specific logic
+	iconBase64, err = icon.GetAppIconAsBase64(exePath)
+	if err != nil {
+		// Log the error but don't fail the request, as the icon is not critical.
+		s.Logger.Printf("Failed to get icon for %s: %v", exePath, err)
+	}
+
+	s.iconCacheMu.Lock()
+	s.iconCache[exePath] = iconBase64
+	s.iconCacheMu.Unlock()
+
+	return commercialName, iconBase64
 }

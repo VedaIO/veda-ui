@@ -1,26 +1,19 @@
-//go:build windows
-
 package api
 
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
-	"time"
 	"wails-app/internal/auth"
 	"wails-app/internal/data"
 	"wails-app/internal/platform/autostart"
+	"wails-app/internal/platform/nativehost"
+	"wails-app/internal/platform/uninstall"
 
 	"github.com/shirou/gopsutil/v3/process"
-	"golang.org/x/sys/windows/registry"
 )
 
 const appName = "ProcGuard"
-const hostName = "com.infraflakes.procguard"
 
 // Uninstall handles the uninstallation of the application.
 // It performs a series of cleanup tasks in a separate goroutine and then initiates a self-deletion process.
@@ -54,65 +47,18 @@ func (s *Server) Uninstall(password string) error {
 		if err := autostart.RemoveAutostart(); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to remove autostart: %v\n", err)
 		}
-		if err := removeNativeHost(); err != nil {
+		if err := nativehost.Remove(); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to remove native host: %v\n", err)
 		}
 
-		// Initiate the self-deletion process.
-		if err := selfDelete(); err != nil {
+		// Initiate the self-deletion process using platform-specific logic.
+		if err := uninstall.SelfDestruct(appName); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to initiate self-deletion: %v\n", err)
 		}
 
 		// Exit the application to allow the self-deletion to complete.
 		os.Exit(0)
 	}()
-
-	return nil
-}
-
-// selfDelete creates and executes a batch script that deletes the application files after the main process has exited.
-// This is a common technique for applications on Windows to perform self-uninstallation.
-func selfDelete() error {
-	if runtime.GOOS != "windows" {
-		return fmt.Errorf("self-deletion is currently implemented only for Windows")
-	}
-
-	localAppData := os.Getenv("LOCALAPPDATA")
-	if localAppData == "" {
-		return fmt.Errorf("could not find LOCALAPPDATA directory")
-	}
-	appDataDir := filepath.Join(localAppData, appName)
-
-	// Create a temporary batch file in the system's temp directory.
-	tempDir := os.TempDir()
-	batchFileName := fmt.Sprintf("delete_procguard_%d.bat", time.Now().UnixNano())
-	batchFilePath := filepath.Join(tempDir, batchFileName)
-
-	// The batch script waits for a moment to ensure the main process has exited,
-	// then deletes the application's data directory and finally deletes itself.
-	batchContent := fmt.Sprintf(`
-@echo off
-timeout /t 2 /nobreak > nul
-rmdir /s /q "%s"
-del "%s"
-`, appDataDir, batchFilePath)
-
-	err := os.WriteFile(batchFilePath, []byte(batchContent), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write batch file: %w", err)
-	}
-
-	// Execute the batch file in a new, detached process so it can run independently of the main application.
-	cmd := exec.Command("cmd.exe", "/C", batchFilePath)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start batch process: %w", err)
-	}
 
 	return nil
 }
@@ -158,27 +104,6 @@ func unblockAll() error {
 				data.GetLogger().Printf("Failed to unblock file %s: %v", name, err)
 			}
 		}
-	}
-
-	return nil
-}
-
-// removeNativeHost removes the native messaging host configuration from the system.
-func removeNativeHost() error {
-	// Delete the registry key for the native messaging host.
-	keyPath := `SOFTWARE\Google\Chrome\NativeMessagingHosts\` + hostName
-	if err := registry.DeleteKey(registry.CURRENT_USER, keyPath); err != nil && err != registry.ErrNotExist {
-		return err
-	}
-
-	// Delete the manifest file.
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return err
-	}
-	manifestPath := filepath.Join(cacheDir, "procguard", "procguard.json")
-	if err := os.Remove(manifestPath); err != nil && !os.IsNotExist(err) {
-		return err
 	}
 
 	return nil

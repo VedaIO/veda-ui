@@ -117,3 +117,33 @@ func RegisterExtension(extensionId string) error {
 	}
 	return InstallNativeHost(exePath, extensionId)
 }
+
+// Remove removes the native messaging host configuration from the system.
+func Remove() error {
+	// Delete the registry key for the native messaging host.
+	keyPath := `SOFTWARE\Google\Chrome\NativeMessagingHosts\` + HostName
+	if err := registry.DeleteKey(registry.CURRENT_USER, keyPath); err != nil && err != registry.ErrNotExist {
+		return err
+	}
+
+	// Delete the manifest file.
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return err
+	}
+	// Note: We use the same path logic as in InstallNativeHost
+	appDataDir := filepath.Join(cacheDir, "procguard")
+	manifestPath := filepath.Join(appDataDir, "config", "native-host.json")
+
+	// Also check legacy path just in case
+	legacyManifestPath := filepath.Join(cacheDir, "procguard", "procguard.json")
+	if err := os.Remove(legacyManifestPath); err != nil && !os.IsNotExist(err) {
+		// Log but continue
+	}
+
+	if err := os.Remove(manifestPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
+}

@@ -2,7 +2,10 @@
 
 package executable
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 // GetPublisherName returns the organization name from the code signature (Not Implemented).
 func GetPublisherName(filePath string) (string, error) {
@@ -17,4 +20,10 @@ func GetProductName(exePath string) (string, error) {
 // IsMicrosoftSigned checks if the executable is signed by Microsoft (Not Implemented).
 func IsMicrosoftSigned(exePath string) bool {
 	return false
+}
+
+// GetCommercialName retrieves the commercial name of the application.
+// On Linux, this currently returns the base filename.
+func GetCommercialName(exePath string) (string, error) {
+	return filepath.Base(exePath), nil
 }

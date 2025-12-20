@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+	"wails-app/internal/auth"
 	"wails-app/internal/data"
 	"wails-app/internal/platform/autostart"
 )
@@ -23,4 +25,36 @@ func (s *Server) EnableAutostart() error {
 // DisableAutostart disables the autostart feature for the application.
 func (s *Server) DisableAutostart() error {
 	return autostart.RemoveAutostart()
+}
+
+// ClearAppHistory removes all application usage logs and screen time data.
+// This is irreversible and requires the user password.
+func (s *Server) ClearAppHistory(password string) error {
+	cfg, err := data.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	if !auth.CheckPasswordHash(password, cfg.PasswordHash) {
+		return fmt.Errorf("invalid password")
+	}
+
+	data.ClearAppHistory()
+	return nil
+}
+
+// ClearWebHistory removes all web browsing logs and cached website metadata.
+// This is irreversible and requires the user password.
+func (s *Server) ClearWebHistory(password string) error {
+	cfg, err := data.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	if !auth.CheckPasswordHash(password, cfg.PasswordHash) {
+		return fmt.Errorf("invalid password")
+	}
+
+	data.ClearWebHistory()
+	return nil
 }

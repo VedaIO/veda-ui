@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { openUninstallModal } from './modalStore';
+  import { openConfirmModal } from './modalStore';
   import { showToast } from './toastStore';
 
   let isAutostartEnabled = false;
@@ -43,6 +43,14 @@
     }
   }
 
+  async function clearAppHistory(): Promise<void> {
+    openConfirmModal('Xóa lịch sử ứng dụng', 'clearAppHistory');
+  }
+
+  async function clearWebHistory(): Promise<void> {
+    openConfirmModal('Xóa lịch sử Web', 'clearWebHistory');
+  }
+
   onMount(() => {
     loadAutostartStatus();
   });
@@ -81,6 +89,26 @@
         </div>
       </div>
 
+      <!-- History Management Card -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h4>Quản lý lịch sử</h4>
+        </div>
+        <div class="card-body">
+          <p class="card-text">
+            Xóa dữ liệu thu thập được từ các ứng dụng và trang web.
+          </p>
+          <div class="d-flex gap-2">
+            <button class="btn btn-warning" on:click={clearAppHistory}>
+              Xóa lịch sử ứng dụng
+            </button>
+            <button class="btn btn-warning" on:click={clearWebHistory}>
+              Xóa lịch sử Web
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Uninstall Card -->
       <div class="card mb-4">
         <div class="card-header">
@@ -94,7 +122,8 @@
           <button
             type="button"
             class="btn btn-danger"
-            on:click={openUninstallModal}
+            on:click={() =>
+              openConfirmModal('Xác nhận gỡ cài đặt', 'uninstall')}
           >
             Gỡ cài đặt ProcGuard
           </button>

@@ -10,10 +10,11 @@
   import Toast from './lib/Toast.svelte';
   import GlobalTitleBar from './lib/GlobalTitleBar.svelte';
   import {
-    isUninstallModalOpen,
-    uninstallPassword,
-    uninstallError,
-    handleUninstallSubmit,
+    isConfirmModalOpen,
+    confirmModalPassword,
+    confirmModalError,
+    confirmModalTitle,
+    handleConfirmSubmit,
   } from './lib/modalStore';
 
   const routes: { [key: string]: any } = {
@@ -166,7 +167,7 @@
   </div>
 </div>
 
-{#if $isUninstallModalOpen}
+{#if $isConfirmModalOpen}
   <div
     class="modal fade show"
     tabindex="-1"
@@ -177,13 +178,13 @@
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
         <div class="modal-header" style="color: black;">
-          <h5 class="modal-title" id="uninstallModalLabel">
-            Xác nhận gỡ cài đặt
+          <h5 class="modal-title" id="confirmModalLabel">
+            {$confirmModalTitle}
           </h5>
           <button
             type="button"
             class="btn-close"
-            on:click={() => isUninstallModalOpen.set(false)}
+            on:click={() => isConfirmModalOpen.set(false)}
             aria-label="Close"
           ></button>
         </div>
@@ -191,22 +192,22 @@
           <p>Vui lòng nhập mật khẩu của bạn để tiếp tục.</p>
           <form
             on:submit|preventDefault={() => {
-              handleUninstallSubmit();
+              handleConfirmSubmit();
             }}
           >
             <div class="mb-3">
               <input
                 type="password"
                 class="form-control"
-                id="uninstall-password"
+                id="confirm-password"
                 placeholder="Mật khẩu"
                 required
-                bind:value={$uninstallPassword}
+                bind:value={$confirmModalPassword}
               />
             </div>
-            {#if $uninstallError}
+            {#if $confirmModalError}
               <p class="text-danger" style="display: block">
-                {$uninstallError}
+                {$confirmModalError}
               </p>
             {/if}
             <button type="submit" class="btn btn-danger w-100">

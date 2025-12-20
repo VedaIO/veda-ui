@@ -1,28 +1,62 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
+import { showToast } from './toastStore';
 
-export const isUninstallModalOpen = writable(false);
-export const uninstallPassword = writable('');
-export const uninstallError = writable('');
+export type ConfirmAction = 'uninstall' | 'clearAppHistory' | 'clearWebHistory';
 
-export function openUninstallModal() {
-  uninstallPassword.set('');
-  uninstallError.set('');
-  isUninstallModalOpen.set(true);
+export const isConfirmModalOpen = writable(false);
+export const confirmModalPassword = writable('');
+export const confirmModalError = writable('');
+export const confirmModalTitle = writable('');
+export const confirmModalAction = writable<ConfirmAction | null>(null);
+
+/**
+ * Opens the confirmation modal with a specific title and action.
+ * @param title The title to display in the modal.
+ * @param action The internal action to perform on success.
+ */
+export function openConfirmModal(title: string, action: ConfirmAction) {
+  confirmModalPassword.set('');
+  confirmModalError.set('');
+  confirmModalTitle.set(title);
+  confirmModalAction.set(action);
+  isConfirmModalOpen.set(true);
 }
 
-export async function handleUninstallSubmit() {
-  let password = '';
-  uninstallPassword.subscribe((value) => (password = value))();
+/**
+ * Handles the submission of the confirmation modal.
+ * Verifies the password and executes the selected action.
+ */
+export async function handleConfirmSubmit() {
+  const password = get(confirmModalPassword);
+  const action = get(confirmModalAction);
+
+  if (!action) return;
 
   try {
-    await window.go.main.App.Uninstall(password);
-    isUninstallModalOpen.set(false);
-    // Give the modal a moment to close before closing the page
-    setTimeout(() => {
-      window.location.href = 'about:blank';
-    }, 500);
+    switch (action) {
+      case 'uninstall':
+        await window.go.main.App.Uninstall(password);
+        isConfirmModalOpen.set(false);
+        // Give the modal a moment to close before closing the page
+        setTimeout(() => {
+          window.location.href = 'about:blank';
+        }, 500);
+        break;
+
+      case 'clearAppHistory':
+        await window.go.main.App.ClearAppHistory(password);
+        isConfirmModalOpen.set(false);
+        showToast('Đã xóa lịch sử ứng dụng.', 'success');
+        break;
+
+      case 'clearWebHistory':
+        await window.go.main.App.ClearWebHistory(password);
+        isConfirmModalOpen.set(false);
+        showToast('Đã xóa lịch sử duyệt web.', 'success');
+        break;
+    }
   } catch (error) {
-    console.error('Uninstall error:', error);
-    uninstallError.set('Gỡ cài đặt thất bại. Vui lòng kiểm tra lại mật khẩu.');
+    console.error(`Action ${action} failed:`, error);
+    confirmModalError.set('Thao tác thất bại. Vui lòng kiểm tra lại mật khẩu.');
   }
 }

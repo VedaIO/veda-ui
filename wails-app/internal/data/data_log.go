@@ -87,7 +87,7 @@ func NewLogger(db *sql.DB) {
 		if err != nil {
 			log.Fatalf("Failed to get user cache dir: %v", err)
 		}
-		logPath := filepath.Join(cacheDir, "procguard", "procguard.log")
+		logPath := filepath.Join(cacheDir, "ProcGuard", "procguard.log")
 		file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatalf("Failed to open log file: %v", err)

@@ -49,7 +49,7 @@ type Response struct {
 func Run() {
 	// Setup logging to file (CRITICAL for debugging native messaging)
 	cacheDir, _ := os.UserCacheDir()
-	logDir := filepath.Join(cacheDir, "procguard", "logs")
+	logDir := filepath.Join(cacheDir, "ProcGuard", "logs")
 	_ = os.MkdirAll(logDir, 0755)
 
 	logPath := filepath.Join(logDir, "native_host.log")
@@ -227,7 +227,7 @@ func updateHeartbeat() {
 	if err != nil {
 		return
 	}
-	heartbeatPath := filepath.Join(cacheDir, "procguard", "extension_heartbeat")
+	heartbeatPath := filepath.Join(cacheDir, "ProcGuard", "extension_heartbeat")
 	// Ensure directory exists
 	_ = os.MkdirAll(filepath.Dir(heartbeatPath), 0755)
 

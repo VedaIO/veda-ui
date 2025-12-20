@@ -58,7 +58,7 @@ func GetBlockedWebsitesWithDetails(db *sql.DB) ([]BlockedWebsiteDetail, error) {
 // If the file doesn't exist, it returns an empty list, which is not considered an error.
 func LoadWebBlocklist() ([]string, error) {
 	cacheDir, _ := os.UserCacheDir()
-	p := filepath.Join(cacheDir, "procguard", webBlocklistFile)
+	p := filepath.Join(cacheDir, "ProcGuard", webBlocklistFile)
 
 	// If the blocklist file doesn't exist, return an empty list.
 	b, err := os.ReadFile(p)
@@ -90,8 +90,8 @@ func SaveWebBlocklist(list []string) error {
 	}
 
 	cacheDir, _ := os.UserCacheDir()
-	_ = os.MkdirAll(filepath.Join(cacheDir, "procguard"), 0755)
-	p := filepath.Join(cacheDir, "procguard", webBlocklistFile)
+	_ = os.MkdirAll(filepath.Join(cacheDir, "ProcGuard"), 0755)
+	p := filepath.Join(cacheDir, "ProcGuard", webBlocklistFile)
 
 	// Marshal the list to JSON with indentation for readability.
 	b, err := json.MarshalIndent(list, "", "  ")

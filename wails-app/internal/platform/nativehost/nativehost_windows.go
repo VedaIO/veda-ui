@@ -38,7 +38,7 @@ func InstallNativeHost(exePath, extensionId string) error {
 		log.Printf("Failed to get user cache dir: %v", err)
 		return fmt.Errorf("failed to get user cache dir: %w", err)
 	}
-	appDataDir := filepath.Join(cacheDir, "procguard")
+	appDataDir := filepath.Join(cacheDir, "ProcGuard")
 	configDir := filepath.Join(appDataDir, "config")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		log.Printf("Failed to create config directory: %v", err)
@@ -131,14 +131,14 @@ func Remove() error {
 	if err != nil {
 		return err
 	}
-	// Note: We use the same path logic as in InstallNativeHost
-	appDataDir := filepath.Join(cacheDir, "procguard")
+
+	appDataDir := filepath.Join(cacheDir, "ProcGuard")
 	manifestPath := filepath.Join(appDataDir, "config", "native-host.json")
 
-	// Also check legacy path just in case
-	legacyManifestPath := filepath.Join(cacheDir, "procguard", "procguard.json")
-	if err := os.Remove(legacyManifestPath); err != nil && !os.IsNotExist(err) {
-		data.GetLogger().Printf("Failed to remove legacy manifest: %v", err)
+	// Delete the heartbeat file too
+	heartbeatPath := filepath.Join(appDataDir, "extension_heartbeat")
+	if err := os.Remove(heartbeatPath); err != nil && !os.IsNotExist(err) {
+		data.GetLogger().Printf("Failed to remove heartbeat: %v", err)
 	}
 
 	if err := os.Remove(manifestPath); err != nil && !os.IsNotExist(err) {

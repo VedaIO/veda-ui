@@ -38,6 +38,13 @@ type ScreenTimeState struct {
 	exeCache map[uint32]CachedProcInfo
 }
 
+var resetScreenTimeCh = make(chan struct{}, 1)
+
+// ResetScreenTime clears the in-memory screen time state and process cache.
+func ResetScreenTime() {
+	resetScreenTimeCh <- struct{}{}
+}
+
 // StartScreenTimeMonitor initializes and starts the background goroutine for tracking screen time.
 // It uses a ticker to poll the foreground window at regular intervals and buffers updates
 // to reduce database I/O.
@@ -50,8 +57,17 @@ func StartScreenTimeMonitor(appLogger data.Logger, db *sql.DB) {
 		ticker := time.NewTicker(screenTimeCheckInterval)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			trackForegroundWindow(appLogger, state)
+		for {
+			select {
+			case <-ticker.C:
+				trackForegroundWindow(appLogger, state)
+			case <-resetScreenTimeCh:
+				appLogger.Printf("[Screentime] Reset signal received. Clearing in-memory state.")
+				state.lastExePath = ""
+				state.lastTitle = ""
+				state.pendingDuration = 0
+				state.exeCache = make(map[uint32]CachedProcInfo)
+			}
 		}
 	}()
 }

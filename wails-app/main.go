@@ -70,7 +70,7 @@ func main() {
 	// CRITICAL: Log startup for debugging
 	// Use absolute path in CacheDir because CWD varies when launched by Chrome
 	cacheDir, _ := os.UserCacheDir()
-	logDir := filepath.Join(cacheDir, "procguard", "logs")
+	logDir := filepath.Join(cacheDir, "ProcGuard", "logs")
 	_ = os.MkdirAll(logDir, 0755)
 
 	logPath := filepath.Join(logDir, "procguard_debug.log")
@@ -129,6 +129,7 @@ func main() {
 			WebviewIsTransparent:              false,
 			WindowIsTranslucent:               false,
 			DisableFramelessWindowDecorations: false,
+			WebviewUserDataPath:               filepath.Join(os.Getenv("LOCALAPPDATA"), "ProcGuard", "webview"),
 		},
 
 		// HideWindowOnClose: Keep app running in background

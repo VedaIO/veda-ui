@@ -26,12 +26,15 @@ func SelfDestruct(appName string) error {
 
 	// The batch script waits for a moment to ensure the main process has exited,
 	// then deletes the application's data directory and finally deletes itself.
+	// We also attempt to delete the Roaming folder if it exists (legacy/WebView data).
 	batchContent := fmt.Sprintf(`
 @echo off
 timeout /t 2 /nobreak > nul
 rmdir /s /q "%s"
+rmdir /s /q "%%APPDATA%%\%s"
+rmdir /s /q "%%APPDATA%%\%s.exe"
 del "%s"
-`, appDataDir, batchFilePath)
+`, appDataDir, appName, appName, batchFilePath)
 
 	err := os.WriteFile(batchFilePath, []byte(batchContent), 0644)
 	if err != nil {

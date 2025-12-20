@@ -21,6 +21,15 @@ const processCheckInterval = 2 * time.Second
 var loggedApps = make(map[string]bool)
 var loggedAppsMu sync.Mutex
 
+var resetLoggerCh = make(chan struct{}, 1)
+
+// ResetLoggedApps clears the in-memory cache of logged applications.
+// This allows applications that were previously logged to be logged again
+// after a history clear.
+func ResetLoggedApps() {
+	resetLoggerCh <- struct{}{}
+}
+
 // StartProcessEventLogger starts a long-running goroutine that monitors process creation and termination events.
 func StartProcessEventLogger(appLogger data.Logger, db *sql.DB) {
 	go func() {
@@ -30,20 +39,33 @@ func StartProcessEventLogger(appLogger data.Logger, db *sql.DB) {
 		ticker := time.NewTicker(processCheckInterval)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			procs, err := process.Processes()
-			if err != nil {
-				appLogger.Printf("Failed to get processes: %v", err)
-				continue
-			}
+		for {
+			select {
+			case <-ticker.C:
+				procs, err := process.Processes()
+				if err != nil {
+					appLogger.Printf("Failed to get processes: %v", err)
+					continue
+				}
 
-			currentProcs := make(map[int32]bool)
-			for _, p := range procs {
-				currentProcs[p.Pid] = true
-			}
+				currentProcs := make(map[int32]bool)
+				for _, p := range procs {
+					currentProcs[p.Pid] = true
+				}
 
-			logEndedProcesses(appLogger, db, runningProcs, currentProcs)
-			logNewProcesses(appLogger, db, runningProcs, procs)
+				logEndedProcesses(appLogger, db, runningProcs, currentProcs)
+				logNewProcesses(appLogger, db, runningProcs, procs)
+			case <-resetLoggerCh:
+				appLogger.Printf("[Logger] Reset signal received. Clearing in-memory state.")
+				loggedAppsMu.Lock()
+				loggedApps = make(map[string]bool)
+				loggedAppsMu.Unlock()
+
+				// Clear runningProcs completely.
+				// This ensures that even currently running apps will be re-detected as "new"
+				// in the next ticker cycle and logged to the cleared database.
+				runningProcs = make(map[int32]bool)
+			}
 		}
 	}()
 }
@@ -191,14 +213,11 @@ func shouldLogProcess(p *process.Process) bool {
 		}
 	}
 
-	// Rule 8: Skip Microsoft-signed processes without user interaction
-	// We need exePath again if we failed to get it earlier
-	if exePath == "" {
-		exePath, _ = p.Exe()
-	}
-	if exePath != "" && executable.IsMicrosoftSigned(exePath) {
-		return false
-	}
+	// Rule 8: Skip Microsoft-signed processes ONLY if they are likely background system components.
+	// Since we already checked for Visible Window in Rule 4, and System Path in Rule 6,
+	// if we've reached here, the process is a user-facing Microsoft application (like Edge, Calculator, etc.)
+	// that might have been launched in a way that Rule 7 didn't catch (e.g. background startup).
+	// We allow logging these to be safe, especially after a history clear.
 
 	// Default: Log it (likely a user application)
 	loggedAppsMu.Lock()

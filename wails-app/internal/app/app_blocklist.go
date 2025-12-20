@@ -59,7 +59,7 @@ func GetBlockedAppsWithDetails(db *sql.DB) ([]BlockedAppDetail, error) {
 // If the file doesn't exist, it returns an empty list, which is not considered an error.
 func LoadAppBlocklist() ([]string, error) {
 	cacheDir, _ := os.UserCacheDir()
-	p := filepath.Join(cacheDir, "procguard", appBlocklistFile)
+	p := filepath.Join(cacheDir, "ProcGuard", appBlocklistFile)
 
 	b, err := os.ReadFile(p)
 	if os.IsNotExist(err) {
@@ -91,8 +91,8 @@ func SaveAppBlocklist(list []string) error {
 	}
 
 	cacheDir, _ := os.UserCacheDir()
-	_ = os.MkdirAll(filepath.Join(cacheDir, "procguard"), 0755)
-	p := filepath.Join(cacheDir, "procguard", appBlocklistFile)
+	_ = os.MkdirAll(filepath.Join(cacheDir, "ProcGuard"), 0755)
+	p := filepath.Join(cacheDir, "ProcGuard", appBlocklistFile)
 
 	b, err := json.MarshalIndent(list, "", "  ")
 	if err != nil {

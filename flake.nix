@@ -16,6 +16,7 @@
         gnumake
         bun
         zig
+        biome
       ];
       shellHook = ''
         go env -w GOPATH=$HOME/.local/share/go

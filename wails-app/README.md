@@ -1,59 +1,39 @@
-# ProcGuard Wails Application Architecture
+## Architecture Overview
 
-## Overview
+ProcGuard is a dual-mode Windows application built with Wails v2 that combines a GUI frontend with a background Native Messaging Host for browser integration.
 
-ProcGuard is a desktop application built with [Wails](https://wails.io/), combining a Go backend with a Svelte frontend. It features a unique **Dual-Mode Architecture** to handle both the GUI and the Chrome Extension Native Messaging Host using a single executable.
+### Dual-Mode Execution
 
-## Core Architecture: The "Dual-Mode" Executable
+The same executable (`ProcGuard.exe`) operates in two distinct modes based on launch arguments [1](#5-0) :
 
-The `ProcGuard.exe` binary operates in two distinct modes depending on how it is launched. This is determined at the very beginning of `main.go`.
+1. **GUI Mode**: User-facing application with Wails WebView interface
+2. **Native Messaging Host Mode**: Background process for browser extension communication
 
-### 1. GUI Mode (Default)
-*   **Launched by:** User (double-click, start menu).
-*   **Behavior:**
-    *   Starts the Wails GUI (WebView2).
-    *   Enables `SingleInstanceLock` to prevent multiple GUI windows.
-    *   Starts the `daemon` (process monitor) in a background goroutine.
-    *   Connects to the SQLite database.
-    *   **Communication:** Talks to the Frontend via Wails Bindings (`window.go`).
+Mode selection occurs in `main()` by checking if `os.Args[1]` starts with `chrome-extension://` [2](#5-1) .
 
-### 2. Native Messaging Host Mode (Background)
-*   **Launched by:** Google Chrome (via the Extension).
-*   **Trigger:** `os.Args` contains `chrome-extension://...`.
-*   **Behavior:**
-    *   **NO GUI:** Does not launch the Wails window.
-    *   **Standard I/O:** Communicates with Chrome via `Stdin` (Read) and `Stdout` (Write).
-    *   **Isolation:** Runs as a completely separate process from the GUI. It has its own memory space and variables.
-    *   **Communication:**
-        *   **With Chrome:** JSON messages over Stdio.
-        *   **With GUI:** Shared Files (Heartbeat) and SQLite Database (Logs).
+### Core Components
 
-## Inter-Process Communication (IPC)
+```
+wails-app/
+├── main.go              # Entry point, mode detection, Wails app setup
+├── bindings.go          # App struct embedding API server
+├── api/                 # Backend API layer (exposed to frontend)
+├── internal/            # Core business logic
+└── frontend/            # Svelte/TypeScript UI
+```
 
-Since the GUI and the Native Host are separate processes, they cannot share memory variables. They communicate via:
+### Initialization Flow
 
-1.  **SQLite Database (`procguard.db`):**
-    *   Both processes connect to the same SQLite file in `%LocalAppData%\procguard\`.
-    *   **Native Host:** Writes web logs (`log_url`) and metadata.
-    *   **GUI:** Reads web logs for display.
-    *   **Concurrency:** SQLite WAL (Write-Ahead Logging) mode is enabled to allow simultaneous reading and writing.
+GUI mode initialization sequence in `startup()` [3](#5-2) :
+1. Save Wails runtime context
+2. Initialize SQLite database
+3. Create multi-target logger
+4. Instantiate API server
+5. Start background daemon
+6. Register native messaging host
 
-2.  **Heartbeat File (`extension_heartbeat`):**
-    *   **Native Host:** Writes the current Unix timestamp to `%LocalAppData%\procguard\extension_heartbeat` every 2 seconds (and on every message received).
-    *   **GUI:** Polls this file every 3 seconds. If the timestamp is recent (<10s), it considers the extension "Connected".
+### Key Architectural Patterns
 
-## Directory Structure
-
-*   `main.go`: Entry point. Handles mode switching.
-*   `frontend/`: Svelte 5 source code.
-*   `internal/`: Go internal packages.
-    *   `internal/web/`: Native Messaging Host implementation.
-    *   `internal/daemon/`: Process monitoring logic.
-    *   `internal/data/`: Database access and configuration.
-    *   `internal/auth/`: Password hashing and authentication.
-*   `api/`: Wails API handlers (methods exposed to Frontend).
-
-## Debugging
-
-*   **GUI Logs:** `%LocalAppData%\procguard\logs\procguard_debug.log`
-*   **Native Host Logs:** `%LocalAppData%\procguard\logs\native_host.log` (Crucial for debugging extension issues)
+- **Async Write Queue**: All database writes go through a buffered channel to prevent blocking [4](#5-3) 
+- **Process Isolation**: GUI and Native Host run as separate processes, communicating via SQLite and heartbeat files
+- **Platform Abstraction**: Windows-specific code isolated in `internal/platform/` with build tags

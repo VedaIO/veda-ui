@@ -1,7 +1,23 @@
 name: ProcGuard CI
 on:
   push:
+    paths:
+      - '**.go'
+      - '**.nix'
+      - '**.yml'
+      - '**.yaml'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
   pull_request:
+    paths:
+      - '**.go'
+      - '**.nix'
+      - '**.yml'
+      - '**.yaml'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
 
 jobs:
   build:
@@ -10,26 +26,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Use Determinate Nix Installer (faster than normal Nix)
       - name: Install Determinate Nix
         uses: DeterminateSystems/nix-installer-action@v15
         with:
           determinate: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run CI pipeline
-        run: |
-          nix develop --command bash -c '
-            set -e
-            go install github.com/wailsapp/wails/v2/cmd/wails@latest
-            cd wails-app
-            
-            echo "Running build..."
-            make build
+      - name: Install Wails
+        run: nix develop --command go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-            echo "Running linter..."
-            make lint
-            
-            echo "Checking frontend format..."
-            cd frontend && bun run format-check
-          '
+      - name: Build Application
+        run: |
+          nix develop --command bash -c "cd wails-app && make build"
+
+      - name: Run Linter
+        run: |
+          nix develop --command bash -c "cd wails-app && make lint"
+
+      - name: Frontend Format Check
+        run: |
+          nix develop --command bash -c "cd wails-app/frontend && bun run format-check"

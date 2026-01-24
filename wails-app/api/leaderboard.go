@@ -2,7 +2,7 @@ package api
 
 import (
 	"time"
-	"wails-app/internal/data"
+	"wails-app/internal/data/query"
 	"wails-app/internal/web"
 )
 
@@ -35,14 +35,14 @@ func (s *Server) getAppLeaderboard(since, until string) ([]AppLeaderboardItem, e
 	var err error
 
 	if since != "" {
-		sinceTime, err = data.ParseTime(since)
+		sinceTime, err = query.ParseTime(since)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if until != "" {
-		untilTime, err = data.ParseTime(until)
+		untilTime, err = query.ParseTime(until)
 		if err != nil {
 			return nil, err
 		}
@@ -116,14 +116,14 @@ func (s *Server) getWebLeaderboard(since, until string) ([]WebLeaderboardItem, e
 	var err error
 
 	if since != "" {
-		sinceTime, err = data.ParseTime(since)
+		sinceTime, err = query.ParseTime(since)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if until != "" {
-		untilTime, err = data.ParseTime(until)
+		untilTime, err = query.ParseTime(until)
 		if err != nil {
 			return nil, err
 		}

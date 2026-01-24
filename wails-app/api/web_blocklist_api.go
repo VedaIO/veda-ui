@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"time"
-	"wails-app/internal/data"
+	"wails-app/internal/data/query"
 	"wails-app/internal/web"
 )
 
@@ -77,6 +77,6 @@ func (s *Server) LoadWebBlocklist(content []byte) error {
 }
 
 // GetWebLogs retrieves web logs from the database within a given time range.
-func (s *Server) GetWebLogs(query, since, until string) ([][]string, error) {
-	return data.GetWebLogs(s.db, query, since, until)
+func (s *Server) GetWebLogs(queryStr, since, until string) ([][]string, error) {
+	return query.GetWebLogs(s.db, queryStr, since, until)
 }

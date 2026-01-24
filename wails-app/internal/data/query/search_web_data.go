@@ -1,8 +1,9 @@
-package data
+package query
 
 import (
 	"database/sql"
 	"time"
+	"wails-app/internal/data"
 )
 
 // GetWebLogs retrieves web logs from the database within a given time range.
@@ -53,7 +54,7 @@ func GetWebLogs(db *sql.DB, query, since, until string) ([][]string, error) {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			GetLogger().Printf("Failed to close rows: %v", err)
+			data.GetLogger().Printf("Failed to close rows: %v", err)
 		}
 	}()
 
@@ -73,7 +74,7 @@ func GetWebLogs(db *sql.DB, query, since, until string) ([][]string, error) {
 
 // LogWebActivity records a visited URL in the database.
 func LogWebActivity(url, title string, visitTime int64) error {
-	db := GetDB()
+	db := data.GetDB()
 	if db == nil {
 		return nil // Or error if strict
 	}

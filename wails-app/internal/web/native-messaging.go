@@ -12,6 +12,7 @@ import (
 	"runtime/debug"
 	"time"
 	"wails-app/internal/data"
+	"wails-app/internal/data/query"
 )
 
 const (
@@ -146,7 +147,7 @@ func Run() {
 
 			log.Printf("Logging URL: %s", payload.Url)
 			// Write to DB
-			if err := data.LogWebActivity(payload.Url, payload.Title, payload.VisitTime); err != nil {
+			if err := query.LogWebActivity(payload.Url, payload.Title, payload.VisitTime); err != nil {
 				log.Printf("DB Error: %v", err)
 			}
 

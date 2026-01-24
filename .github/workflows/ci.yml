@@ -40,9 +40,6 @@ jobs:
           determinate: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Wails
-        run: nix develop --command go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
       - name: Run Linter
         run: |
           nix develop --command bash -c "cd wails-app && make lint"

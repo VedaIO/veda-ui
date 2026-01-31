@@ -5,6 +5,7 @@ import (
 	"time"
 	"wails-app/internal/data/logger"
 	"wails-app/internal/data/write"
+	"wails-app/internal/platform/app_filter"
 	platformScreentime "wails-app/internal/platform/screentime"
 
 	"github.com/shirou/gopsutil/v3/process"
@@ -91,7 +92,7 @@ func trackForegroundWindow(appLogger logger.Logger, state *ScreenTimeState) {
 	}
 
 	// Filter out applications that should not be tracked (e.g., system services).
-	if !ShouldTrackApp(exePath, proc) {
+	if app_filter.ShouldExclude(exePath, proc) {
 		return
 	}
 

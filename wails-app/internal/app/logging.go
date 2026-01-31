@@ -5,11 +5,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-
 	"wails-app/internal/data/logger"
 	"wails-app/internal/data/write"
-	"wails-app/internal/platform/executable"
-	"wails-app/internal/platform/integrity"
+	"wails-app/internal/platform/app_filter"
 	"wails-app/internal/platform/window"
 
 	"github.com/shirou/gopsutil/v3/process"
@@ -180,24 +178,10 @@ func shouldLogProcess(p *process.Process) bool {
 		return false
 	}
 
-	// Rule 5: Skip if System integrity level (system services)
-	il, err := integrity.GetProcessLevel(uint32(p.Pid))
-	if err == nil && il >= integrity.SystemRID {
-		return false
-	}
-
-	// Rule 6: Skip if in System32/SysWOW64 (Windows system processes)
+	// Rule 5: Platform-specific system exclusion
 	exePath, err := p.Exe()
 	if err == nil {
-		exePathLower := strings.ToLower(exePath)
-		if strings.Contains(exePathLower, "\\windows\\system32\\") ||
-			strings.Contains(exePathLower, "\\windows\\syswow64\\") {
-			return false
-		}
-
-		// Rule 6.5: Skip processes with "Microsoft® Windows® Operating System" product name
-		productName, err := executable.GetProductName(exePath)
-		if err == nil && strings.Contains(productName, "Microsoft® Windows® Operating System") {
+		if app_filter.ShouldExclude(exePath, p) {
 			return false
 		}
 	}
@@ -213,12 +197,6 @@ func shouldLogProcess(p *process.Process) bool {
 			return true
 		}
 	}
-
-	// Rule 8: Skip Microsoft-signed processes ONLY if they are likely background system components.
-	// Since we already checked for Visible Window in Rule 4, and System Path in Rule 6,
-	// if we've reached here, the process is a user-facing Microsoft application (like Edge, Calculator, etc.)
-	// that might have been launched in a way that Rule 7 didn't catch (e.g. background startup).
-	// We allow logging these to be safe, especially after a history clear.
 
 	// Default: Log it (likely a user application)
 	loggedAppsMu.Lock()

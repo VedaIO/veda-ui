@@ -1,20 +1,23 @@
 project_name: procguard
 version: 2
 
+before:
+  hooks:
+    - dir: wails-app
+      cmd: make build VERSION={{.Version}}
+
 builds:
   - id: ProcGuard
-    binary: ProcGuard
-    skip: true
-    targets:
-      - windows_amd64_v1
-    hooks:
-      pre:
-        - dir: wails-app
-          cmd: make build VERSION={{.Version}}
+    builder: prebuilt
+    binary: wails-app/build/bin/ProcGuard
+    goos:
+      - windows
+    goarch:
+      - amd64
 
 archives:
-  - format: binary
-    name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ .Ext }}"
+  - name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ .Ext }}"
+    format: binary
     files:
       - src: 'wails-app/build/bin/ProcGuard.exe'
         dst: ProcGuard.exe
@@ -26,4 +29,3 @@ release:
   github:
     owner: infraflakes
     name: procguard
-

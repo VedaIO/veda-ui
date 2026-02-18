@@ -38,8 +38,8 @@ func ShouldExclude(exePath string, proc *proc_sensing.ProcessInfo) bool {
 
 	// Skip system integrity level processes (system services)
 	if proc != nil {
-		il, err := integrity.GetProcessLevel(uint32(proc.PID))
-		if err == nil && il >= integrity.SystemRID {
+		il := integrity.GetProcessLevel(uint32(proc.PID))
+		if il >= integrity.SystemRID {
 			return true
 		}
 	}

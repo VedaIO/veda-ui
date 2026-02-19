@@ -1,3 +1,5 @@
+//go:build windows
+
 package ipc
 
 import (
@@ -63,7 +65,7 @@ func (c *Client) Request(method string, params interface{}) (json.RawMessage, er
 		c.mu.Unlock()
 		return nil, err
 	}
-	
+
 	decoder := json.NewDecoder(c.conn)
 	var resp Response
 	if err := decoder.Decode(&resp); err != nil {

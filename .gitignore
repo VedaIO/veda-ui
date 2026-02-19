@@ -2,7 +2,7 @@
 wailsjs/
 build.log
 dist/
-src/build/bin
+build/bin
 frontend/dist/
 
 # IDE

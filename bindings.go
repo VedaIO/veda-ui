@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"time"
 
-	"src/internal/ipc"
+	"veda-ui/internal/ipc"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -217,4 +217,3 @@ func (a *App) ShowWindow() {
 	wailsruntime.WindowUnminimise(a.ctx)
 	wailsruntime.Show(a.ctx)
 }
-

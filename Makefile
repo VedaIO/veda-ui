@@ -10,11 +10,11 @@ VERSION ?= $(shell git describe --tags --always --dirty --first-parent 2>/dev/nu
 all: build
 build:
 	@echo "Building Veda for windows..."
-	CGO_ENABLED=1 CC="zig cc -target x86_64-windows-gnu -Wl,--subsystem,windows" wails build -platform windows/amd64 -ldflags="-w -s -X main.version=$(VERSION)" --upx --upxflags "--best --lzma"
+	CGO_ENABLED=0 wails build -platform windows/amd64 -ldflags="-w -s -X main.version=$(VERSION)"
 
 build-debug:
 	@echo "Building Veda for windows (debug)..."
-	CGO_ENABLED=1 CC="zig cc -target x86_64-windows-gnu" wails build -platform windows/amd64 -ldflags="-X main.version=$(VERSION)"
+	CGO_ENABLED=0 wails build -platform windows/amd64 -ldflags="-X main.version=$(VERSION)"
 
 fmt:
 	@echo "Formatting code..."
@@ -22,7 +22,7 @@ fmt:
 	cd frontend && bun run format
 
 lint:
-	CGO_ENABLED=1 CC="zig cc -target x86_64-windows-gnu" GOOS=windows golangci-lint run
+	CGO_ENABLED=0 GOOS=windows golangci-lint run
 	cd frontend && bun run lint
 
 clean:

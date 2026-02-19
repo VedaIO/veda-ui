@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,81 +10,198 @@ import (
 	"runtime"
 	"time"
 
-	"src/api"
-	"src/internal/data/logger"
+	"src/internal/ipc"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// App struct holds the application context and server instance
-// ctx: Wails runtime context - used to call runtime methods like WindowShow, WindowUnminimise
-// *api.Server: Embedded server instance that handles all business logic
+// App struct holds the application context and IPC client
 type App struct {
-	ctx context.Context
-	*api.Server
-
-	// Legacy field (not used anymore)
-	IsNativeMessagingActive bool
+	ctx       context.Context
+	ipcClient *ipc.Client
 }
 
 // NewApp creates a new App application struct
-// This is called from main() to initialize the application
 func NewApp() *App {
-	return &App{}
+	return &App{
+		ipcClient: ipc.NewClient(),
+	}
 }
 
-// CheckChromeExtension checks if the Chrome extension is connected
-func (a *App) CheckChromeExtension() bool {
-	log := logger.GetLogger() // Use the logger we set up in main.go
+// --- Helper ---
 
+func unmarshalResult[T any](raw json.RawMessage) (T, error) {
+	var v T
+	err := json.Unmarshal(raw, &v)
+	return v, err
+}
+
+func (a *App) callVoid(method string, params interface{}) error {
+	_, err := a.ipcClient.Request(method, params)
+	return err
+}
+
+func (a *App) callResult(method string, params interface{}) (interface{}, error) {
+	res, err := a.ipcClient.Request(method, params)
+	if err != nil {
+		return nil, err
+	}
+	var data interface{}
+	err = json.Unmarshal(res, &data)
+	return data, err
+}
+
+// --- Stats ---
+
+func (a *App) GetAppLeaderboard(since, until string) (interface{}, error) {
+	return a.callResult("GetAppLeaderboard", map[string]string{"since": since, "until": until})
+}
+
+func (a *App) GetScreenTime() (interface{}, error) {
+	return a.callResult("GetScreenTime", nil)
+}
+
+func (a *App) GetTotalScreenTime() (interface{}, error) {
+	return a.callResult("GetTotalScreenTime", nil)
+}
+
+func (a *App) GetWebLeaderboard(since, until string) (interface{}, error) {
+	return a.callResult("GetWebLeaderboard", map[string]string{"since": since, "until": until})
+}
+
+func (a *App) Search(query, since, until string) (interface{}, error) {
+	return a.callResult("Search", map[string]string{"query": query, "since": since, "until": until})
+}
+
+func (a *App) GetWebLogs(query, since, until string) (interface{}, error) {
+	return a.callResult("GetWebLogs", map[string]string{"query": query, "since": since, "until": until})
+}
+
+// --- App Blocklist ---
+
+func (a *App) GetAppBlocklist() (interface{}, error) {
+	return a.callResult("GetAppBlocklist", nil)
+}
+
+func (a *App) BlockApps(names []string) error {
+	return a.callVoid("BlockApps", names)
+}
+
+func (a *App) UnblockApps(names []string) error {
+	return a.callVoid("UnblockApps", names)
+}
+
+func (a *App) ClearAppBlocklist() error {
+	return a.callVoid("ClearAppBlocklist", nil)
+}
+
+func (a *App) SaveAppBlocklist() (interface{}, error) {
+	return a.callResult("SaveAppBlocklist", nil)
+}
+
+func (a *App) LoadAppBlocklist(content []byte) error {
+	return a.callVoid("LoadAppBlocklist", content)
+}
+
+// --- Web Blocklist ---
+
+func (a *App) GetWebBlocklist() (interface{}, error) {
+	return a.callResult("GetWebBlocklist", nil)
+}
+
+func (a *App) AddWebBlocklist(domain string) error {
+	return a.callVoid("AddWebBlocklist", domain)
+}
+
+func (a *App) RemoveWebBlocklist(domain string) error {
+	return a.callVoid("RemoveWebBlocklist", domain)
+}
+
+func (a *App) ClearWebBlocklist() error {
+	return a.callVoid("ClearWebBlocklist", nil)
+}
+
+func (a *App) SaveWebBlocklist() (interface{}, error) {
+	return a.callResult("SaveWebBlocklist", nil)
+}
+
+func (a *App) LoadWebBlocklist(content []byte) error {
+	return a.callVoid("LoadWebBlocklist", content)
+}
+
+// --- Auth ---
+
+func (a *App) GetIsAuthenticated() (interface{}, error) {
+	return a.callResult("GetIsAuthenticated", nil)
+}
+
+func (a *App) Logout() error {
+	return a.callVoid("Logout", nil)
+}
+
+func (a *App) HasPassword() (interface{}, error) {
+	return a.callResult("HasPassword", nil)
+}
+
+func (a *App) Login(password string) (interface{}, error) {
+	return a.callResult("Login", map[string]string{"password": password})
+}
+
+func (a *App) SetPassword(password string) error {
+	return a.callVoid("SetPassword", map[string]string{"password": password})
+}
+
+// --- System ---
+
+func (a *App) Shutdown() error {
+	return a.callVoid("Shutdown", nil)
+}
+
+func (a *App) Uninstall(password string) error {
+	return a.callVoid("Uninstall", map[string]string{"password": password})
+}
+
+func (a *App) GetAutostartStatus() (interface{}, error) {
+	return a.callResult("GetAutostartStatus", nil)
+}
+
+func (a *App) EnableAutostart() error {
+	return a.callVoid("EnableAutostart", nil)
+}
+
+func (a *App) DisableAutostart() error {
+	return a.callVoid("DisableAutostart", nil)
+}
+
+func (a *App) ClearAppHistory(password string) error {
+	return a.callVoid("ClearAppHistory", map[string]string{"password": password})
+}
+
+func (a *App) ClearWebHistory(password string) error {
+	return a.callVoid("ClearWebHistory", map[string]string{"password": password})
+}
+
+// --- Local Methods (UI-side only) ---
+
+func (a *App) CheckChromeExtension() bool {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		log.Printf("[CheckExt] Error getting cache dir: %v", err)
 		return false
 	}
-
 	heartbeatPath := filepath.Join(cacheDir, "Veda", "extension_heartbeat")
-
-	// Read timestamp from file
 	content, err := os.ReadFile(heartbeatPath)
 	if err != nil {
-		// Don't log "not exist" errors too noisily as it's expected when not installed
-		if !os.IsNotExist(err) {
-			log.Printf("[CheckExt] Error reading file: %v", err)
-		}
 		return false
 	}
-
-	// Parse timestamp
 	var lastPing int64
 	if _, err := fmt.Sscanf(string(content), "%d", &lastPing); err != nil {
-		log.Printf("[CheckExt] Error parsing timestamp '%s': %v", string(content), err)
 		return false
 	}
-
-	// Check if ping is recent (within last 10 seconds)
-	pingTime := time.Unix(lastPing, 0)
-	timeSince := time.Since(pingTime)
-	isValid := timeSince < 10*time.Second
-
-	return isValid
+	return time.Since(time.Unix(lastPing, 0)) < 10*time.Second
 }
 
-// OpenBrowser opens a URL in the user's default system browser
-//
-// Why this exists: window.open() opens URLs inside the Wails WebView, not external browser
-// Problem this fixes: Clicking "Install Extension" was trying to open Chrome Web Store in WebView
-// Solution: Use OS-specific commands to open external browser
-//
-// Platform support:
-//   - Windows: uses 'cmd /c start'
-//   - macOS: uses 'open'
-//   - Linux: uses 'xdg-open'
-//
-// Returns: error if command fails to start, nil on success
 func (a *App) OpenBrowser(url string) error {
 	var cmd *exec.Cmd
-
 	switch runtime.GOOS {
 	case "windows":
 		cmd = exec.Command("cmd", "/c", "start", url)
@@ -92,21 +210,11 @@ func (a *App) OpenBrowser(url string) error {
 	case "linux":
 		cmd = exec.Command("xdg-open", url)
 	}
-
 	return cmd.Start()
 }
 
-// ShowWindow brings the application window to the foreground
-// Unminimizes the window if it's minimized, then makes it visible
-//
-// IMPORTANT: Only call this when user explicitly wants to see the window!
-// DO NOT call this from polling/background operations or it will interrupt the user
-//
-// Used by: OnSecondInstanceLaunch callback - when user double-clicks exe while app is running
-// Context: With HideWindowOnClose=true, closing the window hides it but keeps daemon running
-//
-//	When user runs exe again, SingleInstanceLock prevents new process and calls this instead
 func (a *App) ShowWindow() {
 	wailsruntime.WindowUnminimise(a.ctx)
 	wailsruntime.Show(a.ctx)
 }
+

@@ -8,13 +8,13 @@
   "frontend:dev:watcher": "bun run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "infraflakes",
-    "email": "infraflakes@proton.me"
+    "name": "VedaIO",
+    "email": "vedaio@proton.me"
   },
   "info": {
     "productName": "Veda",
-    "companyName": "Nixuris",
-    "copyright": "Copyright (c) 2025 Nixuris",
-    "productVersion": "1.0.0.0"
+    "companyName": "VedaIO",
+    "copyright": "Copyright (c) 2026 VedaIO",
+    "productVersion": "1.4.3"
   }
 }
